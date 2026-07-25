@@ -16,4 +16,12 @@
         <toolWindow factoryClass="com.github.vasanthvasanthm.plugin.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
         <postStartupActivity implementation="com.github.vasanthvasanthm.plugin.startup.MyProjectActivity" />
     </extensions>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="LogFlow"
+                    secondary="false"
+                    anchor="bottom"
+                    factoryClass="com.logflow.LogToolWindowFactory" />
+    </extensions>
+
 </idea-plugin>
