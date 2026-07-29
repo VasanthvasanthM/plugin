@@ -6,12 +6,15 @@ plugins {
     id("org.jetbrains.changelog")
 }
 
+group = "com.github.vasanthvasanthm"
+version = "1.0.1"
+
 dependencies {
     testImplementation("junit:junit:4.13.2")
     implementation("com.jcraft:jsch:0.1.55")
-    // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
+
     intellijPlatform {
-        intellijIdea("2024.3")
+        intellijIdeaCommunity("2024.3") // Changed from intellijIdea("2024.3") to target Community Edition
         testFramework(TestFrameworkType.Platform)
     }
 }

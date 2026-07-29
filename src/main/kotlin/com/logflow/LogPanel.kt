@@ -1,6 +1,8 @@
 package com.logflow
 
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.FlowLayout
@@ -14,7 +16,9 @@ class LogPanel {
     private val logPane = JEditorPane().apply {
         contentType = "text/html"
         isEditable = false
-        text = "<html><body style='font-family:sans-serif; font-size:12px;'>LogFlow initialized. Configure your server and click Connect...<br></body></html>"
+        putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true)
+        background = JBColor.PanelBackground
+        text = getInitialHtml()
     }
 
     private val hostField = JTextField("", 12).apply { toolTipText = "Remote SSH Host IP" }
@@ -38,14 +42,14 @@ class LogPanel {
     private val statusLabel = JLabel(" Status: Idle ").apply { isOpaque = false }
     private val statusPanel = JPanel(FlowLayout(FlowLayout.LEFT, 5, 2)).apply {
         isOpaque = true
-        background = Color(240, 240, 240)
+        background = JBColor(Color(240, 240, 240), Color(60, 63, 65))
         add(statusLabel)
     }
 
     private var logStreamer: LogStreamer? = null
     private var errorCount = 0
     private var rawLogLines = mutableListOf<String>()
-    private var logBuilder = StringBuilder("<html><body style='font-family:sans-serif; font-size:12px;'>LogFlow initialized...<br>")
+    private var logBuilder = StringBuilder(getInitialHtml())
 
     init {
         // Row 1: Connection configurations
@@ -60,7 +64,7 @@ class LogPanel {
             add(passField)
         }
 
-        // Row 2: File path, filters, options, and actions (Export is safely here)
+        // Row 2: File path, filters, options, and actions
         val actionPanel = JPanel(FlowLayout(FlowLayout.LEFT, 5, 5)).apply {
             add(JLabel("Path:"))
             add(pathField)
@@ -120,7 +124,7 @@ class LogPanel {
             appendLog("[LogFlow] Connecting to $host:$port (tailing last $tailCount lines)...", false)
             connectButton.text = "Disconnect"
             statusLabel.text = " Status: Streaming Live (No Errors)"
-            statusPanel.background = Color(220, 245, 220)
+            statusPanel.background = JBColor(Color(220, 245, 220), Color(40, 70, 40))
 
             logStreamer = LogStreamer(
                 host = host,
@@ -141,7 +145,7 @@ class LogPanel {
                     SwingUtilities.invokeLater {
                         errorCount++
                         statusLabel.text = " Status: ALERT! Errors Detected: $errorCount"
-                        statusPanel.background = Color(255, 220, 220)
+                        statusPanel.background = JBColor(Color(255, 220, 220), Color(90, 40, 40))
                     }
                 },
                 onStopped = {
@@ -149,7 +153,7 @@ class LogPanel {
                         logStreamer = null
                         connectButton.text = "Connect"
                         statusLabel.text = " Status: Disconnected (Total Errors Caught: $errorCount)"
-                        statusPanel.background = Color(240, 240, 240)
+                        statusPanel.background = JBColor(Color(240, 240, 240), Color(60, 63, 65))
                         appendLog("[LogFlow] Session stopped.", false)
                     }
                 }
@@ -158,14 +162,24 @@ class LogPanel {
         }
     }
 
+    private fun getThemeStyle(): String {
+        // Automatically picks standard IDE label foreground color for text in HTML body
+        val fgColorHex = String.format("#%06x", (UIUtil.getLabelForeground().rgb) and 0x00FFFFFF)
+        return "font-family:sans-serif; font-size:12px; color: $fgColorHex;"
+    }
+
+    private fun getInitialHtml(): String {
+        return "<html><body style='${getThemeStyle()}'>LogFlow initialized. Configure your server and click Connect...<br></body></html>"
+    }
+
     private fun clearLogs() {
         rawLogLines.clear()
-        logBuilder = StringBuilder("<html><body style='font-family:sans-serif; font-size:12px;'>")
+        logBuilder = StringBuilder("<html><body style='${getThemeStyle()}'>")
         logPane.text = "$logBuilder</body></html>"
         errorCount = 0
         if (logStreamer == null) {
             statusLabel.text = " Status: Idle "
-            statusPanel.background = Color(240, 240, 240)
+            statusPanel.background = JBColor(Color(240, 240, 240), Color(60, 63, 65))
         }
     }
 
@@ -217,7 +231,10 @@ class LogPanel {
         val escapedText = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
         val formattedLine = if (isError) {
-            "<span style='background-color: #ffe6e6; color: #b30000; font-weight: bold;'>$escapedText</span><br>"
+            // Adaptive soft red backgrounds with matching contrasting error text for light/dark themes
+            val errorBg = JBColor(Color(255, 230, 230), Color(70, 30, 30))
+            val errorFg = JBColor(Color(179, 0, 0), Color(255, 128, 128))
+            "<span style='background-color: ${toHex(errorBg)}; color: ${toHex(errorFg)}; font-weight: bold;'>$escapedText</span><br>"
         } else {
             "$escapedText<br>"
         }
@@ -229,12 +246,19 @@ class LogPanel {
             SwingUtilities.invokeLater {
                 val docLength = logPane.document.length
                 logPane.caretPosition = docLength
-                val rect = logPane.modelToView(docLength)
-                if (rect != null) {
-                    logPane.scrollRectToVisible(rect)
+                try {
+                    val rect = logPane.modelToView(docLength)
+                    if (rect != null) {
+                        logPane.scrollRectToVisible(rect)
+                    }
+                } catch (_: Exception) {
                 }
             }
         }
+    }
+
+    private fun toHex(color: Color): String {
+        return String.format("#%06x", color.rgb and 0x00FFFFFF)
     }
 
     fun getContent(): JPanel = content
